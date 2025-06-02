@@ -92,8 +92,8 @@ const OrderStatus = () => {
               </div>
 
               <div className="text-center text-sm text-gray-600">
-                <p>Estimated preparation time: 15-20 minutes</p>
-                <p>You will be notified when your order is ready</p>
+                <p>Your order has been placed successfully!</p>
+                <p>The restaurant will prepare your order and notify you when it's ready</p>
               </div>
             </div>
           </CardContent>

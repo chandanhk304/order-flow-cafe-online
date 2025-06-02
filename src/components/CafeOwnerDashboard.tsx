@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { QrCode, Plus, Trash2, Wifi, WifiOff } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { QrCode, Plus, Trash2, Wifi, WifiOff, ClipboardList } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
+import OrderTracking from '@/components/OrderTracking';
 import { apiService } from '@/services/api';
 
 interface MenuItem {
@@ -164,99 +166,120 @@ const CafeOwnerDashboard = () => {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <QrCode className="h-5 w-5" />
-              QR Code Generator
-            </CardTitle>
-            <CardDescription>Generate QR code for your digital menu</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-2">Menu URL:</p>
-                <p className="text-sm font-mono break-all">{menuUrl}</p>
-              </div>
-              <Button onClick={() => setShowQR(!showQR)} className="w-full">
-                {showQR ? 'Hide QR Code' : 'Generate QR Code'}
-              </Button>
-              {showQR && <QRCodeGenerator url={menuUrl} />}
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="menu" className="space-y-8">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="menu">Menu Management</TabsTrigger>
+          <TabsTrigger value="orders" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Track Orders
+          </TabsTrigger>
+          <TabsTrigger value="qr" className="flex items-center gap-2">
+            <QrCode className="h-4 w-4" />
+            QR Code
+          </TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Add Menu Item
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              placeholder="Item Name"
-              value={newItem.name}
-              onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-            />
-            <Input
-              placeholder="Price (₹)"
-              type="number"
-              value={newItem.price}
-              onChange={(e) => setNewItem({...newItem, price: e.target.value})}
-            />
-            <Input
-              placeholder="Description"
-              value={newItem.description}
-              onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-            />
-            <select
-              className="w-full p-2 border rounded-md"
-              value={newItem.category}
-              onChange={(e) => setNewItem({...newItem, category: e.target.value})}
-            >
-              <option value="Food">Food</option>
-              <option value="Beverage">Beverage</option>
-              <option value="Dessert">Dessert</option>
-            </select>
-            <Button onClick={handleAddItem} className="w-full">Add Item</Button>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value="menu" className="space-y-8">
+          <div className="grid lg:grid-cols-2 gap-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Add Menu Item
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Input
+                  placeholder="Item Name"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                />
+                <Input
+                  placeholder="Price (₹)"
+                  type="number"
+                  value={newItem.price}
+                  onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+                />
+                <Input
+                  placeholder="Description"
+                  value={newItem.description}
+                  onChange={(e) => setNewItem({...newItem, description: e.target.value})}
+                />
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value={newItem.category}
+                  onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                >
+                  <option value="Food">Food</option>
+                  <option value="Beverage">Beverage</option>
+                  <option value="Dessert">Dessert</option>
+                </select>
+                <Button onClick={handleAddItem} className="w-full">Add Item</Button>
+              </CardContent>
+            </Card>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Current Menu ({cafe.menu.length} items)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cafe.menu.map((item) => (
-              <Card key={item._id}>
-                <CardContent className="pt-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteItem(item._id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold">₹{item.price}</span>
-                    <Badge variant={item.available ? "default" : "secondary"}>
-                      {item.category}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Menu ({cafe.menu.length} items)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {cafe.menu.map((item) => (
+                    <div key={item._id} className="flex justify-between items-start p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{item.name}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold">₹{item.price}</span>
+                          <Badge variant={item.available ? "default" : "secondary"}>
+                            {item.category}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteItem(item._id)}
+                        className="ml-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        <TabsContent value="orders">
+          <OrderTracking cafeId={cafeId!} />
+        </TabsContent>
+
+        <TabsContent value="qr">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                QR Code Generator
+              </CardTitle>
+              <CardDescription>Generate QR code for your digital menu</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">Menu URL:</p>
+                  <p className="text-sm font-mono break-all">{menuUrl}</p>
+                </div>
+                <Button onClick={() => setShowQR(!showQR)} className="w-full">
+                  {showQR ? 'Hide QR Code' : 'Generate QR Code'}
+                </Button>
+                {showQR && <QRCodeGenerator url={menuUrl} />}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

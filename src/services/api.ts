@@ -39,6 +39,39 @@ const mockCafes = [
   }
 ];
 
+// Mock orders data
+const mockOrders = [
+  {
+    _id: 'order1',
+    cafeId: 'wgi4axpgb',
+    items: [
+      { menuItemId: '1', name: 'Cappuccino', price: 120, quantity: 2 },
+      { menuItemId: '3', name: 'Chocolate Cake', price: 180, quantity: 1 }
+    ],
+    totalAmount: 420,
+    customerName: 'John Doe',
+    tableNumber: 'T5',
+    paymentMethod: 'upi',
+    status: 'pending',
+    paymentStatus: 'completed',
+    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString() // 10 minutes ago
+  },
+  {
+    _id: 'order2',
+    cafeId: 'wgi4axpgb',
+    items: [
+      { menuItemId: '2', name: 'Margherita Pizza', price: 350, quantity: 1 }
+    ],
+    totalAmount: 350,
+    customerName: 'Jane Smith',
+    tableNumber: 'T3',
+    paymentMethod: 'cash',
+    status: 'preparing',
+    paymentStatus: 'pending',
+    createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString() // 25 minutes ago
+  }
+];
+
 // Check if backend is available
 const isBackendAvailable = async (): Promise<boolean> => {
   try {
@@ -124,6 +157,41 @@ export const apiService = {
       if (cafe) {
         cafe.menu = cafe.menu.filter(item => item._id !== itemId);
       }
+    }
+  },
+
+  // Order endpoints
+  getOrders: async (cafeId: string) => {
+    const backendAvailable = await isBackendAvailable();
+    
+    if (backendAvailable) {
+      const response = await fetch(`${API_BASE_URL}/orders/cafe/${cafeId}`);
+      if (!response.ok) throw new Error('Failed to fetch orders');
+      return response.json();
+    } else {
+      // Use mock data
+      return mockOrders.filter(order => order.cafeId === cafeId);
+    }
+  },
+
+  updateOrderStatus: async (orderId: string, status: string) => {
+    const backendAvailable = await isBackendAvailable();
+    
+    if (backendAvailable) {
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) throw new Error('Failed to update order status');
+      return response.json();
+    } else {
+      // Update mock data
+      const order = mockOrders.find(o => o._id === orderId);
+      if (order) {
+        order.status = status;
+      }
+      return order;
     }
   }
 };
