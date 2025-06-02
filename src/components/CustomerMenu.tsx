@@ -4,8 +4,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Wifi, WifiOff } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { apiService } from '@/services/api';
 
 interface MenuItem {
   _id: string;
@@ -33,8 +34,7 @@ const CustomerMenu = () => {
   const [cafe, setCafe] = useState<CafeData | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const apiUrl = 'http://localhost:3001/api';
+  const [isOnline, setIsOnline] = useState(false);
 
   useEffect(() => {
     fetchCafeAndMenu();
@@ -47,29 +47,31 @@ const CustomerMenu = () => {
 
   const fetchCafeAndMenu = async () => {
     try {
-      const [cafeResponse, menuResponse] = await Promise.all([
-        fetch(`${apiUrl}/cafes/${cafeId}`),
-        fetch(`${apiUrl}/menu/${cafeId}`)
+      console.log('Fetching cafe and menu data for ID:', cafeId);
+      
+      const [cafeData, menuData] = await Promise.all([
+        apiService.getCafe(cafeId!),
+        apiService.getMenu(cafeId!)
       ]);
-
-      if (cafeResponse.ok && menuResponse.ok) {
-        const cafeData = await cafeResponse.json();
-        const menuData = await menuResponse.json();
-        
-        setCafe(cafeData);
-        setMenu(menuData);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to load menu data",
-          variant: "destructive"
-        });
-      }
+      
+      console.log('Cafe data received:', cafeData);
+      console.log('Menu data received:', menuData);
+      
+      setCafe(cafeData);
+      setMenu(menuData);
+      setIsOnline(true);
+      
+      toast({
+        title: "Menu Loaded",
+        description: "Successfully loaded menu data",
+      });
     } catch (error) {
       console.error('Error fetching data:', error);
+      setIsOnline(false);
+      
       toast({
-        title: "Error",
-        description: "Failed to connect to server",
+        title: "Demo Mode",
+        description: "Showing demo menu - backend server not available",
         variant: "destructive"
       });
     } finally {
@@ -132,6 +134,9 @@ const CustomerMenu = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">No Menu Available</h2>
           <p className="text-gray-600">This cafe hasn't added any menu items yet.</p>
+          <Button onClick={fetchCafeAndMenu} className="mt-4">
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -143,8 +148,17 @@ const CustomerMenu = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{cafe.name}</h1>
-          <p className="text-gray-600">Digital Menu</p>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">{cafe.name}</h1>
+            {isOnline ? (
+              <Wifi className="h-5 w-5 text-green-500" />
+            ) : (
+              <WifiOff className="h-5 w-5 text-red-500" />
+            )}
+          </div>
+          <p className="text-gray-600">
+            Digital Menu {!isOnline && "(Demo Mode)"}
+          </p>
         </div>
         <Button
           onClick={() => navigate(`/cart/${cafeId}`)}

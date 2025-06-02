@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { QrCode, Plus, Edit, Trash2 } from 'lucide-react';
+import { QrCode, Plus, Trash2, Wifi, WifiOff } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
+import { apiService } from '@/services/api';
 
 interface MenuItem {
   _id: string;
@@ -23,13 +24,13 @@ interface CafeData {
   name: string;
   ownerEmail: string;
   menu: MenuItem[];
-  orders: any[];
 }
 
 const CafeOwnerDashboard = () => {
   const { cafeId } = useParams();
   const [cafe, setCafe] = useState<CafeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(false);
   const [newItem, setNewItem] = useState({
     name: '',
     price: '',
@@ -38,30 +39,29 @@ const CafeOwnerDashboard = () => {
   });
   const [showQR, setShowQR] = useState(false);
 
-  const apiUrl = 'http://localhost:3001/api';
-
   useEffect(() => {
     fetchCafe();
   }, [cafeId]);
 
   const fetchCafe = async () => {
     try {
-      const response = await fetch(`${apiUrl}/cafes/${cafeId}`);
-      if (response.ok) {
-        const cafeData = await response.json();
-        setCafe(cafeData);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to load cafe data",
-          variant: "destructive"
-        });
-      }
+      console.log('Fetching cafe data for ID:', cafeId);
+      const cafeData = await apiService.getCafe(cafeId!);
+      console.log('Cafe data received:', cafeData);
+      setCafe(cafeData);
+      setIsOnline(true);
+      
+      toast({
+        title: "Connected",
+        description: "Successfully connected to server",
+      });
     } catch (error) {
       console.error('Error fetching cafe:', error);
+      setIsOnline(false);
+      
       toast({
-        title: "Error",
-        description: "Failed to connect to server",
+        title: "Offline Mode",
+        description: "Using demo data - backend server not available",
         variant: "destructive"
       });
     } finally {
@@ -80,35 +80,24 @@ const CafeOwnerDashboard = () => {
     }
 
     try {
-      const response = await fetch(`${apiUrl}/menu/${cafeId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newItem),
+      const addedItem = await apiService.addMenuItem(cafeId!, newItem);
+      
+      setCafe(prev => prev ? {
+        ...prev,
+        menu: [...prev.menu, addedItem]
+      } : null);
+
+      setNewItem({
+        name: '',
+        price: '',
+        description: '',
+        category: 'Food'
       });
 
-      if (response.ok) {
-        const addedItem = await response.json();
-        setCafe(prev => prev ? {
-          ...prev,
-          menu: [...prev.menu, addedItem]
-        } : null);
-
-        setNewItem({
-          name: '',
-          price: '',
-          description: '',
-          category: 'Food'
-        });
-
-        toast({
-          title: "Success",
-          description: "Menu item added successfully!",
-        });
-      } else {
-        throw new Error('Failed to add menu item');
-      }
+      toast({
+        title: "Success",
+        description: "Menu item added successfully!",
+      });
     } catch (error) {
       console.error('Error adding menu item:', error);
       toast({
@@ -121,23 +110,17 @@ const CafeOwnerDashboard = () => {
 
   const handleDeleteItem = async (itemId: string) => {
     try {
-      const response = await fetch(`${apiUrl}/menu/${cafeId}/${itemId}`, {
-        method: 'DELETE',
+      await apiService.deleteMenuItem(cafeId!, itemId);
+      
+      setCafe(prev => prev ? {
+        ...prev,
+        menu: prev.menu.filter(item => item._id !== itemId)
+      } : null);
+
+      toast({
+        title: "Success",
+        description: "Menu item deleted successfully!",
       });
-
-      if (response.ok) {
-        setCafe(prev => prev ? {
-          ...prev,
-          menu: prev.menu.filter(item => item._id !== itemId)
-        } : null);
-
-        toast({
-          title: "Success",
-          description: "Menu item deleted successfully!",
-        });
-      } else {
-        throw new Error('Failed to delete menu item');
-      }
     } catch (error) {
       console.error('Error deleting menu item:', error);
       toast({
@@ -153,7 +136,14 @@ const CafeOwnerDashboard = () => {
   }
 
   if (!cafe) {
-    return <div className="container mx-auto px-4 py-8">Cafe not found</div>;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Cafe not found</h2>
+          <p className="text-gray-600">Please check the cafe ID or try again later.</p>
+        </div>
+      </div>
+    );
   }
 
   const menuUrl = `${window.location.origin}/menu/${cafeId}`;
@@ -161,8 +151,17 @@ const CafeOwnerDashboard = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">{cafe.name}</h1>
-        <p className="text-gray-600">Owner Dashboard</p>
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900">{cafe.name}</h1>
+          {isOnline ? (
+            <Wifi className="h-5 w-5 text-green-500" />
+          ) : (
+            <WifiOff className="h-5 w-5 text-red-500" />
+          )}
+        </div>
+        <p className="text-gray-600">
+          Owner Dashboard {!isOnline && "(Demo Mode - Backend Offline)"}
+        </p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
