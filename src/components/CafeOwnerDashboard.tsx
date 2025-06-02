@@ -10,7 +10,7 @@ import { toast } from '@/components/ui/use-toast';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
 
 interface MenuItem {
-  id: string;
+  _id: string;
   name: string;
   price: number;
   description: string;
@@ -19,7 +19,7 @@ interface MenuItem {
 }
 
 interface CafeData {
-  id: string;
+  _id: string;
   name: string;
   ownerEmail: string;
   menu: MenuItem[];
@@ -29,6 +29,7 @@ interface CafeData {
 const CafeOwnerDashboard = () => {
   const { cafeId } = useParams();
   const [cafe, setCafe] = useState<CafeData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [newItem, setNewItem] = useState({
     name: '',
     price: '',
@@ -37,14 +38,38 @@ const CafeOwnerDashboard = () => {
   });
   const [showQR, setShowQR] = useState(false);
 
+  const apiUrl = 'http://localhost:3001/api';
+
   useEffect(() => {
-    const cafeData = localStorage.getItem(`cafe_${cafeId}`);
-    if (cafeData) {
-      setCafe(JSON.parse(cafeData));
-    }
+    fetchCafe();
   }, [cafeId]);
 
-  const handleAddItem = () => {
+  const fetchCafe = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/cafes/${cafeId}`);
+      if (response.ok) {
+        const cafeData = await response.json();
+        setCafe(cafeData);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load cafe data",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching cafe:', error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to server",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddItem = async () => {
     if (!newItem.name || !newItem.price) {
       toast({
         title: "Error",
@@ -54,53 +79,81 @@ const CafeOwnerDashboard = () => {
       return;
     }
 
-    const item: MenuItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newItem.name,
-      price: parseFloat(newItem.price),
-      description: newItem.description,
-      category: newItem.category,
-      available: true
-    };
+    try {
+      const response = await fetch(`${apiUrl}/menu/${cafeId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newItem),
+      });
 
-    const updatedCafe = {
-      ...cafe!,
-      menu: [...cafe!.menu, item]
-    };
+      if (response.ok) {
+        const addedItem = await response.json();
+        setCafe(prev => prev ? {
+          ...prev,
+          menu: [...prev.menu, addedItem]
+        } : null);
 
-    setCafe(updatedCafe);
-    localStorage.setItem(`cafe_${cafeId}`, JSON.stringify(updatedCafe));
+        setNewItem({
+          name: '',
+          price: '',
+          description: '',
+          category: 'Food'
+        });
 
-    setNewItem({
-      name: '',
-      price: '',
-      description: '',
-      category: 'Food'
-    });
-
-    toast({
-      title: "Success",
-      description: "Menu item added successfully!",
-    });
+        toast({
+          title: "Success",
+          description: "Menu item added successfully!",
+        });
+      } else {
+        throw new Error('Failed to add menu item');
+      }
+    } catch (error) {
+      console.error('Error adding menu item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add menu item",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeleteItem = (itemId: string) => {
-    const updatedCafe = {
-      ...cafe!,
-      menu: cafe!.menu.filter(item => item.id !== itemId)
-    };
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      const response = await fetch(`${apiUrl}/menu/${cafeId}/${itemId}`, {
+        method: 'DELETE',
+      });
 
-    setCafe(updatedCafe);
-    localStorage.setItem(`cafe_${cafeId}`, JSON.stringify(updatedCafe));
+      if (response.ok) {
+        setCafe(prev => prev ? {
+          ...prev,
+          menu: prev.menu.filter(item => item._id !== itemId)
+        } : null);
 
-    toast({
-      title: "Success",
-      description: "Menu item deleted successfully!",
-    });
+        toast({
+          title: "Success",
+          description: "Menu item deleted successfully!",
+        });
+      } else {
+        throw new Error('Failed to delete menu item');
+      }
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete menu item",
+        variant: "destructive"
+      });
+    }
   };
+
+  if (loading) {
+    return <div className="container mx-auto px-4 py-8">Loading...</div>;
+  }
 
   if (!cafe) {
-    return <div className="container mx-auto px-4 py-8">Loading...</div>;
+    return <div className="container mx-auto px-4 py-8">Cafe not found</div>;
   }
 
   const menuUrl = `${window.location.origin}/menu/${cafeId}`;
@@ -180,14 +233,14 @@ const CafeOwnerDashboard = () => {
         <CardContent>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {cafe.menu.map((item) => (
-              <Card key={item.id}>
+              <Card key={item._id}>
                 <CardContent className="pt-4">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-semibold">{item.name}</h3>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDeleteItem(item.id)}
+                      onClick={() => handleDeleteItem(item._id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

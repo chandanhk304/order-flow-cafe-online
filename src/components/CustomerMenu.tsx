@@ -8,7 +8,7 @@ import { ShoppingCart, Plus, Minus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface MenuItem {
-  id: string;
+  _id: string;
   name: string;
   price: number;
   description: string;
@@ -20,34 +20,70 @@ interface CartItem extends MenuItem {
   quantity: number;
 }
 
+interface CafeData {
+  _id: string;
+  name: string;
+  menu: MenuItem[];
+}
+
 const CustomerMenu = () => {
   const { cafeId } = useParams();
   const navigate = useNavigate();
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [cafe, setCafe] = useState<CafeData | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [cafeName, setCafeName] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const apiUrl = 'http://localhost:3001/api';
 
   useEffect(() => {
-    const cafeData = localStorage.getItem(`cafe_${cafeId}`);
-    if (cafeData) {
-      const cafe = JSON.parse(cafeData);
-      setMenu(cafe.menu);
-      setCafeName(cafe.name);
-    }
-
+    fetchCafeAndMenu();
+    
     const cartData = localStorage.getItem(`cart_${cafeId}`);
     if (cartData) {
       setCart(JSON.parse(cartData));
     }
   }, [cafeId]);
 
+  const fetchCafeAndMenu = async () => {
+    try {
+      const [cafeResponse, menuResponse] = await Promise.all([
+        fetch(`${apiUrl}/cafes/${cafeId}`),
+        fetch(`${apiUrl}/menu/${cafeId}`)
+      ]);
+
+      if (cafeResponse.ok && menuResponse.ok) {
+        const cafeData = await cafeResponse.json();
+        const menuData = await menuResponse.json();
+        
+        setCafe(cafeData);
+        setMenu(menuData);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load menu data",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to server",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const addToCart = (item: MenuItem) => {
-    const existingItem = cart.find(cartItem => cartItem.id === item.id);
+    const existingItem = cart.find(cartItem => cartItem._id === item._id);
     let updatedCart;
 
     if (existingItem) {
       updatedCart = cart.map(cartItem =>
-        cartItem.id === item.id
+        cartItem._id === item._id
           ? { ...cartItem, quantity: cartItem.quantity + 1 }
           : cartItem
       );
@@ -66,7 +102,7 @@ const CustomerMenu = () => {
 
   const updateQuantity = (itemId: string, change: number) => {
     const updatedCart = cart.map(item => {
-      if (item.id === itemId) {
+      if (item._id === itemId) {
         const newQuantity = item.quantity + change;
         return newQuantity > 0 ? { ...item, quantity: newQuantity } : null;
       }
@@ -78,7 +114,7 @@ const CustomerMenu = () => {
   };
 
   const getCartQuantity = (itemId: string) => {
-    const item = cart.find(cartItem => cartItem.id === itemId);
+    const item = cart.find(cartItem => cartItem._id === itemId);
     return item ? item.quantity : 0;
   };
 
@@ -86,13 +122,28 @@ const CustomerMenu = () => {
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
+  if (loading) {
+    return <div className="container mx-auto px-4 py-8">Loading menu...</div>;
+  }
+
+  if (!cafe || menu.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">No Menu Available</h2>
+          <p className="text-gray-600">This cafe hasn't added any menu items yet.</p>
+        </div>
+      </div>
+    );
+  }
+
   const categories = [...new Set(menu.map(item => item.category))];
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{cafeName}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{cafe.name}</h1>
           <p className="text-gray-600">Digital Menu</p>
         </div>
         <Button
@@ -111,9 +162,9 @@ const CustomerMenu = () => {
             {menu
               .filter(item => item.category === category)
               .map(item => {
-                const quantity = getCartQuantity(item.id);
+                const quantity = getCartQuantity(item._id);
                 return (
-                  <Card key={item.id}>
+                  <Card key={item._id}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{item.name}</CardTitle>
@@ -137,7 +188,7 @@ const CustomerMenu = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => updateQuantity(item.id, -1)}
+                              onClick={() => updateQuantity(item._id, -1)}
                             >
                               <Minus className="h-4 w-4" />
                             </Button>
@@ -145,7 +196,7 @@ const CustomerMenu = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => updateQuantity(item.id, 1)}
+                              onClick={() => updateQuantity(item._id, 1)}
                             >
                               <Plus className="h-4 w-4" />
                             </Button>

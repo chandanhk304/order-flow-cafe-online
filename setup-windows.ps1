@@ -20,12 +20,6 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 
 Write-Host "✅ Prerequisites check passed!" -ForegroundColor Green
 
-# Clone repository (if not already cloned)
-if (!(Test-Path ".git")) {
-    Write-Host "📥 Cloning QR Café repository..." -ForegroundColor Blue
-    git clone https://github.com/yourusername/qr-cafe.git .
-}
-
 # Create necessary directories
 Write-Host "📁 Creating directories..." -ForegroundColor Blue
 New-Item -ItemType Directory -Force -Path "backend/logs"
@@ -41,13 +35,21 @@ if (!$dockerStatus) {
     Start-Sleep 30
 }
 
+# Create environment file
+Write-Host "⚙️ Setting up environment..." -ForegroundColor Blue
+if (!(Test-Path "backend/.env")) {
+    Copy-Item "backend/.env.example" "backend/.env"
+    Write-Host "Created backend/.env file. Please update with your configuration." -ForegroundColor Yellow
+}
+
 # Build and start services
 Write-Host "🏗️ Building and starting services..." -ForegroundColor Blue
+docker-compose down
 docker-compose up -d --build
 
 # Wait for services to be ready
 Write-Host "⏳ Waiting for services to be ready..." -ForegroundColor Blue
-Start-Sleep 45
+Start-Sleep 60
 
 # Check service health
 Write-Host "🔍 Checking service health..." -ForegroundColor Blue
@@ -99,3 +101,9 @@ Write-Host "   1. Open http://localhost:3000 to create your first café" -Foregr
 Write-Host "   2. Set up Grafana dashboards at http://localhost:3030" -ForegroundColor White
 Write-Host "   3. Configure email alerts in monitoring/alertmanager.yml" -ForegroundColor White
 Write-Host ""
+Write-Host "🗃️ Database Info:" -ForegroundColor Cyan
+Write-Host "   - MongoDB stores all cafe and menu data" -ForegroundColor White
+Write-Host "   - Sample cafe with menu items is pre-loaded" -ForegroundColor White
+Write-Host "   - Data persists between container restarts" -ForegroundColor White
+Write-Host ""
+

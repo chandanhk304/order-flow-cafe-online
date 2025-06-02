@@ -1,73 +1,115 @@
 
 const express = require('express');
+const Order = require('../models/Order');
+const Cafe = require('../models/Cafe');
 const router = express.Router();
 
-// Mock data store
-let orders = [];
-
 // Get orders for a cafe
-router.get('/cafe/:cafeId', (req, res) => {
+router.get('/cafe/:cafeId', async (req, res) => {
   try {
-    const cafeOrders = orders.filter(order => order.cafeId === req.params.cafeId);
-    res.json(cafeOrders);
+    const orders = await Order.find({ cafeId: req.params.cafeId })
+      .sort({ createdAt: -1 });
+    res.json(orders);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch orders' });
   }
 });
 
-// Create new order
-router.post('/', (req, res) => {
-  try {
-    const { cafeId, customerName, tableNumber, items, total, paymentMethod } = req.body;
-    
-    if (!cafeId || !customerName || !tableNumber || !items || !total) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const order = {
-      id: Math.random().toString(36).substr(2, 9),
-      cafeId,
-      customerName,
-      tableNumber,
-      items,
-      total: parseFloat(total),
-      paymentMethod: paymentMethod || 'cash',
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-
-    orders.push(order);
-    res.status(201).json(order);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create order' });
-  }
-});
-
 // Get order by ID
-router.get('/:id', (req, res) => {
+router.get('/:orderId', async (req, res) => {
   try {
-    const order = orders.find(o => o.id === req.params.id);
+    const order = await Order.findById(req.params.orderId)
+      .populate('cafeId', 'name address phone');
+    
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
+    
     res.json(order);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch order' });
   }
 });
 
-// Update order status
-router.patch('/:id', (req, res) => {
+// Create new order
+router.post('/', async (req, res) => {
   try {
-    const orderIndex = orders.findIndex(o => o.id === req.params.id);
-    if (orderIndex === -1) {
-      return res.status(404).json({ error: 'Order not found' });
+    const { cafeId, items, customerName, tableNumber, paymentMethod } = req.body;
+    
+    if (!cafeId || !items || !customerName || !tableNumber) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    orders[orderIndex] = { ...orders[orderIndex], ...req.body };
-    res.json(orders[orderIndex]);
+    // Calculate total amount
+    const totalAmount = items.reduce((total, item) => {
+      return total + (item.price * item.quantity);
+    }, 0);
+
+    const order = new Order({
+      cafeId,
+      items,
+      totalAmount,
+      customerName,
+      tableNumber,
+      paymentMethod: paymentMethod || 'cash'
+    });
+
+    const savedOrder = await order.save();
+    res.status(201).json(savedOrder);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update order' });
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+// Update order status
+router.put('/:orderId/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'completed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.orderId,
+      { status },
+      { new: true }
+    );
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
+// Update payment status
+router.put('/:orderId/payment', async (req, res) => {
+  try {
+    const { paymentStatus } = req.body;
+    
+    const validStatuses = ['pending', 'completed', 'failed'];
+    if (!validStatuses.includes(paymentStatus)) {
+      return res.status(400).json({ error: 'Invalid payment status' });
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.orderId,
+      { paymentStatus },
+      { new: true }
+    );
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update payment status' });
   }
 });
 
