@@ -1,0 +1,43 @@
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # QR Cafe Backend
+  - job_name: 'qr-cafe-backend'
+    static_configs:
+      - targets: ['backend:3001']
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # QR Cafe Frontend
+  - job_name: 'qr-cafe-frontend'
+    static_configs:
+      - targets: ['frontend:80']
+    scrape_interval: 30s
+
+  # Node Exporter (System Metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # MongoDB Exporter (if needed)
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+    scrape_interval: 30s

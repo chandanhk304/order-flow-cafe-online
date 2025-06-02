@@ -1,13 +1,32 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+import LandingPage from '@/components/LandingPage';
+import CafeOwnerDashboard from '@/components/CafeOwnerDashboard';
+import CustomerMenu from '@/components/CustomerMenu';
+import Cart from '@/components/Cart';
+import OrderStatus from '@/components/OrderStatus';
+
+const queryClient = new QueryClient();
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <QueryClientProvider client={queryClient}>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
+        <Router>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/owner/:cafeId" element={<CafeOwnerDashboard />} />
+            <Route path="/menu/:cafeId" element={<CustomerMenu />} />
+            <Route path="/cart/:cafeId" element={<Cart />} />
+            <Route path="/order/:orderId" element={<OrderStatus />} />
+          </Routes>
+        </Router>
+        <Toaster />
       </div>
-    </div>
+    </QueryClientProvider>
   );
 };
 

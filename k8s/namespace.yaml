@@ -1,0 +1,7 @@
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: qr-cafe
+  labels:
+    name: qr-cafe

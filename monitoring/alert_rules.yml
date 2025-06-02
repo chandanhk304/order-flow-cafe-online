@@ -1,0 +1,53 @@
+
+groups:
+  - name: qr-cafe-alerts
+    rules:
+      # Backend Service Down
+      - alert: BackendDown
+        expr: up{job="qr-cafe-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "QR Cafe Backend is down"
+          description: "QR Cafe Backend has been down for more than 1 minute."
+
+      # Frontend Service Down
+      - alert: FrontendDown
+        expr: up{job="qr-cafe-frontend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "QR Cafe Frontend is down"
+          description: "QR Cafe Frontend has been down for more than 1 minute."
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 90% for more than 2 minutes."
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80% for more than 2 minutes."
+
+      # Database Connection Issues
+      - alert: DatabaseDown
+        expr: up{job="mongodb"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "MongoDB database is down"
+          description: "MongoDB database has been unreachable for more than 30 seconds."
